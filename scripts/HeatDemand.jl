@@ -1,20 +1,26 @@
-"""
-California demand barycenter example
-==========================================
-"""
+# ============================================
+#  Barycenter example
+# ============================================
 
 
-""" set directory paths to code and the paper
------------------------------------------------------ """
-paperpath = joinpath(homedir(),"Dropbox/Discrete_W_Barycenter_Manuscript/final\ paper")
-codepath  = joinpath(homedir(),"Dropbox/Discrete_W_Barycenter_Manuscript/barycenter_code")
+# --------------------------------------------
+#  Load Packages, set paths and load the data.
+# --------------------------------------------
 
-
-
-"""  Load the data
------------------------------------------------------ """
 using DataFrames
+using JuMP
+using Clp
+using PyCall
+using PyPlot
 
+
+# ---- Set directory paths to code and the paper
+figurepath = joinpath(pwd(),"figures")
+codepath   = joinpath(pwd(),"scripts")
+
+
+
+# -----------  Load the data
 # data from https://en.wikipedia.org/wiki/Climate_of_California
 citydf = DataFrame(
 	city = [
@@ -45,9 +51,9 @@ citydf = DataFrame(
 )
 
 
-
-"""  Transform temp data and package into a custom type
---------------------------------------------------------- """
+# ---------------------------------------------------
+# Transform temp data and package into a custom type
+# ---------------------------------------------------
 # This is basically a named array type.
 # It is designed to contain the images in the columns (indexed by month)
 immutable city_x_month_image <: AbstractMatrix{Float64}
@@ -88,9 +94,10 @@ images = city_x_month_image(citydf, :dec, :jan, :feb, :mar, :jun, :jul, :aug, :s
 
 
 
+# ---------------------------------------------------
+#   Get barycenter support
+# ---------------------------------------------------
 
-"""  Get barycenter support
------------------------------------------------------ """
 # The following object iterates over the number of ways to choose 8 locations out of 20.
 function get_support(citydf, images)
 	ncities      = length(cities(images))
@@ -113,28 +120,20 @@ end
 @time bary_support = get_support(citydf, images)
 
 
+# ------------------------------------------------------------
+# Define and solve the Wasserstein Barycenter linear program
+# -----------------------------------------------------------
 
-"""  Initialize distance matrix and variable size
------------------------------------------------------ """
+# ------- initialize distance matrix and variable size
 N = size(images, 2)        # number of images
 n = size(images, 1)        # each image size
 b = size(bary_support, 2)  # barycenter size
 zk = (citydf[:lon_x] .- bary_support[1,:]).^2  + (citydf[:lat_y] .- bary_support[2,:]).^2
 
+# ------- define the solver
+m = Model(solver = ClpSolver(SolveType=5))
 
-
-""" Now define the linear program
------------------------------------------------------ """
-using JuMP
-using Clp
-
-# m = Model(solver = ClpSolver(SolveType=1)) # primal simplex, 8 sec,  74 nonzeros some negs
-# m = Model(solver = ClpSolver(SolveType=0)) # dual simplex, 14 sec, 46 nonzeros no negs
-# m = Model(solver = ClpSolver(SolveType=3)) #  barrier with crossover to optimal basis, 11 secs, 62 nonzeros some negs
-# m = Model(solver = ClpSolver(SolveType=4)) #  barrier without crossover to optimal basis, 3 secs,  46 nonzeros no negs
-m = Model(solver = ClpSolver(SolveType=5)) # automatic, 15 secs, 46 nonzeros no negs
-
-# --- set variables and constraints
+# ------ set variables and constraints
 @defVar(m, p[1:b] >= 0 )
 @defVar(m, mk[1:n, 1:b, 1:N] >= 0 )
 for i = 1:n, k = 1:N
@@ -144,29 +143,28 @@ for j = 1:b, k = 1:N
 	@addConstraint(m, sum{mk[i, j, k], i = 1:n} == p[j])
 end
 
-# set objective
+# ------ set objective
 @setObjective(m, Min, sum{zk[i, j] * mk[i, j, k], i=1:n, j=1:b, k=1:N})
 
-# solve it
+# ------- solve it
 @time status = solve(m)
 
-# get the solution
+# ----- get the solution and the support
 pval  = getValue(p[:])
 mkval = Array(Float64, n, b, N)
 for kntr = 1:N
 	mkval[:,:,kntr] = getValue(mk[:,:,kntr])
 end
-
 psupport = find(pval)
 
 
 
 
+# ------------------------------------------------------------
+# Generate figure1* (the individual month demands)
+# ------------------------------------------------------------
 
-"""  map plots
------------------------------------------------------"""
-using PyCall
-using PyPlot
+
 @pyimport mpl_toolkits.basemap as basemap
 Basemap =  basemap.Basemap
 lat_0, lon_0 =37.0, -119.3
@@ -200,25 +198,26 @@ function monthplots(setmonth::Symbol)
 	axis("off")
 end
 
-
-
 monthplots(:feb)
-savefig(joinpath(paperpath, "figure1a.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+savefig(joinpath(figurepath, "figure1a.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 
 monthplots(:mar)
-savefig(joinpath(paperpath, "figure1b.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+savefig(joinpath(figurepath, "figure1b.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 
 monthplots(:jun)
-savefig(joinpath(paperpath, "figure1c.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+savefig(joinpath(figurepath, "figure1c.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 
 monthplots(:jul)
-savefig(joinpath(paperpath, "figure1d.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+savefig(joinpath(figurepath, "figure1d.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 
 
+# -------------------------------------------------------------------
+# Generate figure2* (the barycenter and the possible support points)
+# -------------------------------------------------------------------
 
 # ---- barycenter  plot
 map[:readshapefile](shapefile, shapename, linewidth=1.5)
@@ -233,10 +232,7 @@ map[:scatter](citydf[:lon_x], citydf[:lat_y], latlon = true,
 	c=[1,0,0],
 	alpha=1)
 axis("off")
-savefig(joinpath(paperpath, "figure1e.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
-
-
+savefig(joinpath(figurepath, "figure1e.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 
 # ---- barycenter support,
@@ -249,16 +245,15 @@ map[:scatter](citydf[:lon_x], citydf[:lat_y], latlon = true,
 	c=[1,0,0],
 	alpha=1)
 axis("off")
-savefig(joinpath(paperpath, "figure1f.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+savefig(joinpath(figurepath, "figure1f.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 
 
 
 
-
-
-""" Transportation maps
------------------------------------------------------ """
+# -------------------------------------------------------------------
+# Generate figure3* (the transportation maps)
+# -------------------------------------------------------------------
 
 # barycntr_trnsprt_map:
 #	- Each row corresponds to a barycenter support point
@@ -281,8 +276,6 @@ cit_srvic_fun(mnth, cit) =  (barycntr_trnsprt_map[cit .== barycntr_trnsprt_map[m
 for mnth in months(images)
 	@assert length(psupport) == sum([length(cit_srvic_fun(mnth,city)) for city in cities(images)])
 end
-
-
 
 # ---- transportation into :sink_city on month :month
 function makequiver(monthindex::Int)
@@ -323,11 +316,8 @@ function makequiver(monthindex::Int)
 	end
 end
 
-
-
 makequiver(4)
-savefig(joinpath(paperpath, "figure1g.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+savefig(joinpath(figurepath, "figure1g.pdf"), dpi=300, bbox_inches="tight", transparent=true)
 
 makequiver(6)
-savefig(joinpath(paperpath, "figure1h.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+savefig(joinpath(figurepath, "figure1h.pdf"), dpi=300, bbox_inches="tight", transparent=true)
