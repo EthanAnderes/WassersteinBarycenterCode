@@ -18,10 +18,13 @@ using PyPlot
 figurepath = joinpath(pwd(),"figures")
 codepath   = joinpath(pwd(),"scripts")
 
-
+# ---- Set directory paths to shapefile for mappitn california
+# citation: from http://www.census.gov/cgi-bin/geo/shapefiles2010/main
+shapename = "tl_2010_06_state10"
+shapefile = joinpath(pwd(),"mapshapefiles/$shapename/$shapename")
 
 # -----------  Load the data
-# data from https://en.wikipedia.org/wiki/Climate_of_California
+# citation: from https://en.wikipedia.org/wiki/Climate_of_California
 citydf = DataFrame(
 	city = [
 		:Bakersfield,
@@ -164,7 +167,6 @@ psupport = find(pval)
 # Generate figure1* (the individual month demands)
 # ------------------------------------------------------------
 
-
 @pyimport mpl_toolkits.basemap as basemap
 Basemap =  basemap.Basemap
 lat_0, lon_0 =37.0, -119.3
@@ -179,10 +181,6 @@ map = Basemap(
     urcrnrlon=lon_0 + 5.2 ,
     urcrnrlat=lat_0 + 5.2
     )
-
-# downloaded from http://www.census.gov/cgi-bin/geo/shapefiles2010/main
-shapename = "tl_2010_06_state10"
-shapefile = joinpath(codepath, "$shapename/$shapename")
 
 
 # ---- plot individual months
@@ -200,19 +198,19 @@ end
 
 monthplots(:feb)
 savefig(joinpath(figurepath, "figure1a.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+plt.close()
 
 monthplots(:mar)
 savefig(joinpath(figurepath, "figure1b.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+plt.close()
 
 monthplots(:jun)
 savefig(joinpath(figurepath, "figure1c.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+plt.close()
 
 monthplots(:jul)
 savefig(joinpath(figurepath, "figure1d.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+plt.close()
 
 
 # -------------------------------------------------------------------
@@ -233,7 +231,7 @@ map[:scatter](citydf[:lon_x], citydf[:lat_y], latlon = true,
 	alpha=1)
 axis("off")
 savefig(joinpath(figurepath, "figure1e.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+plt.close()
 
 # ---- barycenter support,
 map[:readshapefile](shapefile, shapename, linewidth=1.5)
@@ -246,7 +244,7 @@ map[:scatter](citydf[:lon_x], citydf[:lat_y], latlon = true,
 	alpha=1)
 axis("off")
 savefig(joinpath(figurepath, "figure1f.pdf"), dpi=300, bbox_inches="tight", transparent=true)
-
+plt.close()
 
 
 
@@ -318,6 +316,8 @@ end
 
 makequiver(4)
 savefig(joinpath(figurepath, "figure1g.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+plt.close()
 
 makequiver(6)
 savefig(joinpath(figurepath, "figure1h.pdf"), dpi=300, bbox_inches="tight", transparent=true)
+plt.close()
