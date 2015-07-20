@@ -1,6 +1,6 @@
 # Discrete L2 Wasserstein Barycenters
 
-Julia code (tested on OSX 10.10.4 and Julia v0.3) for constructing the discrete Wasserstein barycenters presented in the paper titled `Discrete Wasserstein Barycenters: Optimal Transport for Discrete Data` by Ethan Anderes, Steffen Borgwardt and Jacob Miller.
+Julia code (tested on OSX 10.10.4 and Julia v0.3) for constructing the discrete Wasserstein barycenters presented in the paper titled `Discrete Wasserstein Barycenters: Optimal Transport for Discrete Data` by Ethan Anderes, Steffen Borgwardt and Jacob Miller (a local copy of the paper can be found in directory `paper`).
 
 To execute the code in this repo you can first copy/clone all the source code by typing the following command in the terminal.
 
